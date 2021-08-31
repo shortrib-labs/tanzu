@@ -1,0 +1,89 @@
+## Kubernetes Cluster Domain
+##
+clusterDomain: SHARED_SERVICES_DOMAIN
+
+## Keycloak authentication parameters
+## ref: https://github.com/bitnami/bitnami-docker-keycloak#admin-credentials
+##
+auth:
+  ## Create administrator user on boot.
+  ##
+  createAdminUser: true
+  ## Keycloak administrator user and password
+  ##
+  adminUser: user
+  adminPassword: KEYCLOAK_ADMIN_PASSWORD
+
+  ## Wildfly management user and password
+  ##
+  managementUser: manager
+  managementPassword: ""
+
+## Keycloak Configuration
+## Specify content for standalone-ha.xml
+## NOTE: This will override configuring Keycloak based on environment variables (including those set by the chart)
+## The standalone-ha.xml is auto-generated based on other parameters when this parameter is not specified
+##
+## Example:
+## configuration: |-
+##    foo: bar
+##    baz:
+##
+# configuration:
+
+## Existing ConfigMap with Keycloak Configuration
+## NOTE: When it's set the configuration parameter is ignored
+##
+# existingConfigmap:
+
+## initdb scripts
+## Specify dictionary of scripts to be run at first boot
+## ref: https://github.com/bitnami/bitnami-docker-keycloak#initializing-a-new-instance
+## Example:
+## initdbScripts:
+##   my_init_script.sh: |
+##      #!/bin/bash
+##      echo "Do something."
+##
+initdbScripts: {}
+
+## Service configuration
+##
+service:
+  ## Service type.
+  ##
+  type: ClusterIP
+
+## Ingress configuration
+##
+ingress:
+  ## Set to true to enable ingress record generation
+  ##
+  enabled: true
+
+  ## Set this to true in order to add the corresponding annotations for cert-manager
+  ##
+  certManager: true
+
+  ## When the ingress is enabled, a host pointing to this will be created
+  ##
+  hostname: KEYCLOAK_URL
+
+  ## Ingress annotations done as key:value pairs
+  ## For a full list of possible ingress annotations, please see
+  ## ref: https://github.com/kubernetes/ingress-nginx/blob/master/docs/user-guide/nginx-configuration/annotations.md
+  ##
+  ## If certManager is set to true, annotation kubernetes.io/tls-acme: "true" will automatically be set
+  ##
+  annotations: {}
+
+  ## Enable TLS configuration for the hostname defined at ingress.hostname parameter
+  ## TLS certificates will be retrieved from a TLS secret with name: {{- printf "%s-tls" .Values.ingress.hostname }}
+  ## You can use the ingress.secrets parameter to create this TLS secret, relay on cert-manager to create it, or
+  ## let the chart create self-signed certificates for you
+  ##
+  tls: true
+
+  ## The service port to be used by this ingress.
+  ## Default is http. Alternative is https.
+  servicePort: https

@@ -1,0 +1,28 @@
+adminPassword: LDAP_ADMIN_PASSWORD
+configPassword: LDAP_CONFIG_PASSWORD 
+
+# settings for enabling TLS
+tls:
+  enabled: true
+  secret: LDAP_TLS_SECRET  # The name of a kubernetes.io/tls type secret to use for TLS
+  CA:
+    enabled: true
+    secret: LDAP_TLS_SECRET  # The name of a generic secret to use for custom CA certificate (ca.crt)
+
+service:
+  type: LoadBalancer
+
+# Default configuration for openldap as environment variables. These get injected directly in the container.
+# Use the env variables from https://github.com/osixia/docker-openldap#beginner-guide
+env:
+  LDAP_ORGANISATION: LDAP_ORGANIZATION
+  LDAP_DOMAIN: LDAP_DOMAIN
+  LDAP_BACKEND: "hdb"
+  LDAP_TLS: "true"
+  LDAP_TLS_ENFORCE: "true"
+  LDAP_REMOVE_CONFIG_AFTER_SETUP: "true"
+  LDAP_TLS_VERIFY_CLIENT: "try"
+
+## Persist data to a persistent volume
+persistence:
+  enabled: true
