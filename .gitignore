@@ -1,7 +1,5 @@
 secrets/*
 !secrets/*.enc
 !secrets/README.md
-!secrets/REDACTED-lab.yml
-dns/tls/privkey.pem
 work/*
-!work/README.md
+!work/.gitkeep
