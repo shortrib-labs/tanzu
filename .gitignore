@@ -2,3 +2,5 @@ secrets/*
 !secrets/*.enc
 !secrets/README.md
 work/*
+generated/*
+
