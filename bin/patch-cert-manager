@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+kubectl -n cert-manager patch deployment cert-manager --type json -p "$(cat ${PROJECT_DIR}/patches/cert-manager-dns.json)"
