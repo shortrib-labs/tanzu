@@ -1,0 +1,29 @@
+#!/bin/bash -e
+
+CLUSTER_NAME=$(yq e .shared-services-cluster.name $PARAMS_YAML)
+export VAULT_FQDN=$(yq e .vault.fqdn $PARAMS_YAML)
+export VAULT_URL=https://$VAULT_FQDN
+VAULT_NAMESPACE=$(yq e .vault.namespace $PARAMS_YAML)
+
+mkdir -p generated/$CLUSTER_NAME/vault/
+
+ytt --ignore-unknown-comments -f ${PROJECT_DIR}/vault/vault-values-contour-template.yaml -f ${PARAMS_YAML} > generated/$CLUSTER_NAME/vault/vault-values-contour.yaml
+
+# generate the helm manifest and make sure the web pod trusts let's encrypt
+helm repo add hashicorp https://helm.releases.hashicorp.com
+helm repo update
+
+# NOTE: Through testing setting the OIDC CA in values.yaml did not work as expected, so we are mounting the let's encrypt CA onto the worker pods via ytt overlay
+helm template vault hashicorp/vault -f generated/$CLUSTER_NAME/vault/vault-values-contour.yaml --namespace $VAULT_NAMESPACE --version=0.17.1 | 
+  ytt -f - -f ${PROJECT_DIR}/overlay/trust-certificate --ignore-unknown-comments \
+    --data-value certificate="$(cat ${TKG_LAB_DIR}/keys/letsencrypt-ca.pem)" \
+    --data-value ca=letsencrypt > generated/$CLUSTER_NAME/vault/helm-manifest.yaml
+
+kubectl config use-context $CLUSTER_NAME-admin@$CLUSTER_NAME
+
+kapp deploy -a vault  \
+  -f <(kubectl create namespace ${VAULT_NAMESPACE} --dry-run=client -o yaml) \
+  -f generated/$CLUSTER_NAME/vault/helm-manifest.yaml \
+  -n $VAULT_NAMESPACE \
+  -y
+ 

@@ -1,0 +1,28 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:overlay", "overlay")
+
+#! Add and trust the Let's Encrypt CA certificate authority in a given deployment
+#@ deployment = overlay.subset({"kind": "Deployment"})
+#@ stateful_set = overlay.subset({"kind": "StatefulSet"})
+#@overlay/match by=overlay.or_op(deployment,stateful_set),expects="1+"
+---
+spec:
+  template:
+    spec:
+      volumes:
+      #@overlay/append
+      - name: letsencrypt
+        configMap:
+          name: #@ "{}-ca-cert".format(data.values.ca)
+          defaultMode: 420
+          items:
+          - key: ca.crt
+            path: #@ "{}.pem".format(data.values.ca)
+      containers:
+      #@overlay/match by=overlay.all,expects="1+"
+      #@overlay/match-child-defaults missing_ok=True
+      - volumeMounts:
+        #@overlay/append
+        - name: letsencrypt
+          mountPath: /etc/ssl/certs/letsencrypt.pem
+          subPath: #@ "{}.pem".format(data.values.ca)
