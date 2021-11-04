@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+OKTA_BASE_URL=$(yq e .okta.base-url $PARAMS_YAML)
+OKTA_ORG=$(yq e .okta.org $PARAMS_YAML)
+OKTA_API_TOKEN=$(yq e .vault.okta-token $PARAMS_YAML)
+
+if [[ $(vault auth list -format json | jq -r '.[] | select ( .type == "okta" ) .type') != "okta" ]] ; then
+  vault auth enable okta
+fi
+vault write auth/okta/config \
+  base_url=${OKTA_BASE_URL} \
+  org_name=${OKTA_ORG} \
+  api_token=${OKTA_API_TOKEN}
+
+# create policies using the convention that the policy name is
+# based on the file name
+for policy in ${PROJECT_DIR}/vault/policy/* ; do
+  name=$( basename  /Users/cda/workspace/homelab/tanzu/vault/policy/security.hcl | cut -d. -f1)
+  vault policy write ${name} ${policy}
+done
+
+# assign policies to okta groups
+vault write auth/okta/groups/security policies=security
