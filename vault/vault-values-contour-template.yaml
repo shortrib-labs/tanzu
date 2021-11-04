@@ -7,7 +7,17 @@ server:
   ingress:
     enabled: true
     ingressClassName: contour
-
+    hosts:
+    - host: #@ data.values.vault.fqdn
+      paths: []
+    tls: 
+    - secretName: vault-cert
+      hosts:
+      - #@ data.values.vault.fqdn
+    annotations: |
+      cert-manager.io/cluster-issuer: "letsencrypt-contour-cluster-issuer"
+      ingress.kubernetes.io/force-ssl-redirect: "true"
+    
   authDelegator:
     enabled: false
 
