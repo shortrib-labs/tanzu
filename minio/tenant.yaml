@@ -1,0 +1,55 @@
+#@ load("@ytt:data", "data")
+---
+apiVersion: minio.min.io/v2
+kind: Tenant
+metadata:
+  name: minio
+  namespace: storage
+spec:
+  ## Define configuration for KES (stateless and distributed key-management system)
+  ## Refer https://github.com/minio/kes
+  kes:
+    replicas: 2
+    kesSecret:
+      name: kes-configuration
+    imagePullPolicy: "IfNotPresent"
+  ## Specification for MinIO Pool(s) in this Tenant.
+  pools:
+    ## Servers specifies the number of MinIO Tenant Pods / Servers in this pool.
+    ## For standalone mode, supply 1. For distributed mode, supply 4 or more.
+    ## Note that the operator does not support upgrading from standalone to distributed mode.
+    - servers: 2
+      ## DEPRECATED per GitHub, but still apparently required 
+      credsSecret:
+        name: minio-creds-secret
+      ## volumesPerServer specifies the number of volumes attached per MinIO Tenant Pod / Server.
+      volumesPerServer: 4
+      ## This VolumeClaimTemplate is used across all the volumes provisioned for MinIO Tenant in this
+      ## Pool.
+      volumeClaimTemplate:
+        apiVersion: v1
+        kind: persistentvolumeclaims
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+          storageClassName: minio
+      ## Configure security context
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+  env:
+    - name: MINIO_IDENTITY_OPENID_CONFIG_URL
+      value: #@ "https://{}/.well-known/openid-configuration".format(data.values.okta["auth-server-fqdn"])
+    - name: MINIO_IDENTITY_OPENID_CLIENT_ID
+      value: #@ data.values.okta["minio-app-client-id"]
+    - name: MINIO_IDENTITY_OPENID_CLIENT_SECRET
+      value: #@ data.values.okta["minio-app-client-secret"]
+    - name: MINIO_IDENTITY_OPENID_SCOPES
+      value: "openid,profile,email"
+    - name: MINIO_IDENTITY_OPENID_REDIRECT_URI
+      value: #@ "https://{}/oauth2/callback".format(data.values.minio.fqdn)

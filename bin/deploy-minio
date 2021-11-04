@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+CLUSTER_NAME=$(yq e .shared-services-cluster.name $PARAMS_YAML)
+MINIO_NAMESPACE=$(yq e .minio.namespace $PARAMS_YAML)
+
+kubectl config use-context $CLUSTER_NAME-admin@$CLUSTER_NAME
+
+# use the minio operator plugin
+kubectl krew update
+kubectl krew install minio
+
+# initialize the operator
+kubectl minio init
+
+# prepare for vault KMS for KES
+if [[ $(vault secrets list -format json | jq -r '."kes/" | select ( .type == "kv" ) .type') != "kv" ]] ; then
+  vault secrets enable --version=2 --path kes kv
+fi
+
+if [[ $(vault auth list -format json | jq -r '.[] | select ( .type == "approle" ) .type') != "approle" ]] ; then
+  vault auth enable approle
+fi
+vault write auth/approle/role/kes token_num_uses=0  secret_id_num_uses=0  period=5m
+vault write auth/approle/role/kes policies=kes
+ROLE_ID=$(vault read auth/approle/role/kes/role-id --format=json | jq -r .data.role_id)
+SECRET_ID=$(vault write -f auth/approle/role/kes/secret-id --format=json | jq -r .data.secret_id)
+
+# generate configuration
+mkdir -p ${PROJECT_DIR}/generated/${CLUSTER_NAME}/minio
+
+ytt --ignore-unknown-comments --data-value minio.kes-vault-role-id="${ROLE_ID}" \
+    --data-value minio.kes-vault-secret-id="${SECRET_ID}" -f ${PROJECT_DIR}/minio/kes-configuration.yaml \
+    -f ${PROJECT_DIR}/minio/tenant.yaml -f ${PROJECT_DIR}/minio/storageclass.yaml \
+    -f ${PROJECT_DIR}/minio/tenant-config.yaml -f ${PARAMS_YAML} \
+    -f ${PROJECT_DIR}/minio/tenant-minio-creds-secret_deprecated.yaml \
+  > ${PROJECT_DIR}/generated/${CLUSTER_NAME}/minio/minio-tenant.yaml
+
+kapp deploy -a minio  \
+  -f <(kubectl create namespace ${MINIO_NAMESPACE} --dry-run=client -o yaml) \
+  -f ${PROJECT_DIR}/generated/$CLUSTER_NAME/minio/minio-tenant.yaml \
+  -n $MINIO_NAMESPACE \
+  -y
+

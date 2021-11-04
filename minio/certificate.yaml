@@ -1,0 +1,18 @@
+#@ load("@ytt:data", "data")
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kes.arbol.lab.shortrib.net-tls
+  namespace: storage
+spec:
+  secretName: kes.arbol.lab.shortrib.net-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+  - #@ data.values.minio["kes-fqdn"]
+  issuerRef:
+    name: letsencrypt-contour-cluster-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
