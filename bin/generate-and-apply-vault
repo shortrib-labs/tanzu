@@ -23,7 +23,7 @@ kubectl config use-context $CLUSTER_NAME-admin@$CLUSTER_NAME
 
 kapp deploy -a vault  \
   -f <(kubectl create namespace ${VAULT_NAMESPACE} --dry-run=client -o yaml) \
-  -f generated/$CLUSTER_NAME/vault/helm-manifest.yaml \
+  -f ${PROJECT_DIR}/generated/${CLUSTER_NAME}/vault/helm-manifest.yaml \
   -n $VAULT_NAMESPACE \
   -y
- 
+
