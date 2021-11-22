@@ -21,3 +21,6 @@ done
 
 # assign policies to okta groups
 vault write auth/okta/groups/security policies=security
+
+# enable approle authentication for consuming services
+vault auth enable approle
