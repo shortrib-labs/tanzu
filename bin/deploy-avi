@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+params=${PROJECT_DIR}/avi/params.yml
+ip=$(yq e .ip ${params})
+host=$(yq e .host ${params})
+mask=$(yq e .mask ${params})
+
+datacenter=$(yq e .vsphere.datacenter ${params})
+pool=$(yq e .vsphere.pool ${params})
+datastore=$(yq e .vsphere.datastore ${params})
+network=$(yq e .vsphere.network ${params})
+
+image=$(yq e .image ${params})
+public_key=$(cat $(yq e .ssh.public ${params}))
+
+netmask=$(sipcalc ${ip}/${mask} | grep "mask" | head -1 | awk '{ print $4; }')
+gateway=$(sipcalc ${ip}/${mask} | grep "^Usable" | head -1 | awk '{ print $4; }')
+
+options=$(
+    jq -n \
+    --arg ip "${ip}" \
+    --arg host "${host}" \
+    --arg netmask "${netmask}" \
+    --arg gateway "${gateway}" \
+    --arg public_key "${public_key}" \
+    --arg network "${network}" \
+    "$(cat ${PROJECT_DIR}/avi/options.json)"
+)
+
+govc import.ova --options=<(echo ${options}) --dc ${datacenter} --ds ${datastore} --pool=${pool} ${image}
