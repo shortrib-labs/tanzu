@@ -1,0 +1,52 @@
+#!/bin/bash -e
+
+if [ ! $# -eq 1 ]; then
+  echo "Must supply cluster name as arg"
+  exit 1
+fi
+
+echo "Beginning Velero install..."
+
+CLUSTER_NAME=$1
+kubectl config use-context $CLUSTER_NAME-admin@$CLUSTER_NAME
+
+VELERO_BUCKET=$(yq e .velero.bucket $PARAMS_YAML)
+VELERO_REGION=$(yq e .velero.region $PARAMS_YAML)
+IAAS=$(yq e .iaas $PARAMS_YAML)
+
+if [ "$IAAS" = "vsphere" ];
+then
+  velero install \
+      --provider gcp \
+      --plugins velero/velero-plugin-for-gcp:v1.3.0,vsphereveleroplugin/velero-plugin-for-vsphere:1.1.0 \
+      --bucket $VELERO_BUCKET \
+      --backup-location-config region=$VELERO_REGION \
+      --snapshot-location-config region=$VELERO_REGION \
+      --secret-file ${SECRETS_DIR}/credentials-velero.json
+  velero snapshot-location create vsl-vsphere --provider velero.io/vsphere
+else
+  velero install \
+      --provider aws \
+      --plugins velero/velero-plugin-for-aws:v1.1.0 \
+      --bucket $VELERO_BUCKET \
+      --backup-location-config region=$VELERO_REGION \
+      --snapshot-location-config region=$VELERO_REGION \
+      --secret-file keys/credentials-velero
+fi
+
+# Wait for it to be ready
+while kubectl get po -n velero | grep Running ; [ $? -ne 0 ]; do
+	echo Velero is not yet ready
+	sleep 5s
+done
+
+# Setup the backup schedule
+if [ "$IAAS" = "vsphere" ];
+then
+  velero schedule create daily-$CLUSTER_NAME-cluster-backup \
+    --schedule "0 7 * * *" \
+    --volume-snapshot-locations vsl-vsphere
+else
+  velero schedule create daily-$CLUSTER_NAME-cluster-backup \
+    --schedule "0 7 * * *" 
+fi

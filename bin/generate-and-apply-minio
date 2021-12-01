@@ -1,0 +1,28 @@
+#!/bin/bash -e
+
+CLUSTER_NAME=$(yq e .shared-services-cluster.name $PARAMS_YAML)
+export MINO_FQDN=$(yq e .minio.fqdn $PARAMS_YAML)
+export MINO_URL=https://$MINO_FQDN
+MINO_NAMESPACE=$(yq e .minio.namespace $PARAMS_YAML)
+
+mkdir -p generated/$CLUSTER_NAME/minio/
+
+ytt --ignore-unknown-comments -f ${PROJECT_DIR}/minio/minio-values-contour-template.yaml -f ${PARAMS_YAML} > generated/$CLUSTER_NAME/minio/minio-values-contour.yaml
+
+# generate the helm manifest and make sure the web pod trusts let's encrypt
+helm repo add minio https://charts.min.io
+helm repo update
+
+# NOTE: Through testing setting the OIDC CA in values.yaml did not work as expected, so we are mounting the let's encrypt CA onto the worker pods via ytt overlay
+helm template minio minio/minio -f generated/$CLUSTER_NAME/minio/minio-values-contour.yaml --namespace $MINO_NAMESPACE --version=3.3.0 | 
+  ytt -f - -f ${PROJECT_DIR}/overlay/trust-certificate --ignore-unknown-comments \
+    --data-value certificate="$(cat ${TKG_LAB_DIR}/keys/letsencrypt-ca.pem)" \
+    --data-value ca=letsencrypt > generated/$CLUSTER_NAME/minio/helm-manifest.yaml
+
+kubectl config use-context $CLUSTER_NAME-admin@$CLUSTER_NAME
+
+kapp deploy -a minio  \
+  -f ${PROJECT_DIR}/generated/${CLUSTER_NAME}/minio/helm-manifest.yaml \
+  -n tanzu-kapp --into-ns $MINO_NAMESPACE \
+  -y
+

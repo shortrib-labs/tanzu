@@ -1,0 +1,45 @@
+#!/bin/bash -e
+
+CONCOURSE_YAML=${1}
+if [ ! $# -eq 1 ]; then
+  echo "Must supply path to concourse yaml as an argument"
+  exit 1
+fi
+
+# prepare vault
+if [[ ! $(vault secrets list --format json | jq '. | keys |  contains(["concourse/"])') == "true" ]] ; then
+  vault secrets enable -version=1 -path=concourse kv
+fi
+
+vault policy write concourse <(cat <<POLICY
+path "concourse/*" {
+    policy = "read"
+}
+POLICY
+
+if ! vault read --format json auth/approle/role/concourse/role-id | jq -r .data.role_id ; then
+  vault write auth/approle/role/concourse policies=concourse period=1h
+fi
+
+ROLE_ID=$(vault read --format json auth/approle/role/concourse/role-id | jq -r .data.role_id)
+SECRET_ID=$(vault write --format json -f auth/approle/role/concourse/secret-id | jq -r .data.secret_id)
+
+# update and deploy 
+CLUSTER_NAME=$(yq e .shared-services-cluster.name $PARAMS_YAML)
+kubectl config use-context $CLUSTER_NAME-admin@$CLUSTER_NAME
+
+mkdir -p ${PROJECT_DIR}/generated/$CLUSTER_NAME/concourse
+ytt --ignore-unknown-comments \
+    --data-value concourse.vault-role-id=${ROLE_ID} \
+    --data-value concourse.vault-secret-id=${SECRET_ID} \
+    -f ${CONCOURSE_YAML} \
+    -f ${PROJECT_DIR}/overlay/concourse-vault/overlay.yaml \
+    -f ${PARAMS_YAML} \
+  > ${PROJECT_DIR}/generated/$CLUSTER_NAME/concourse/helm-manifest-plus-vault.yaml
+
+CONCOURSE_NAMESPACE=$(yq e .concourse.namespace $PARAMS_YAML)
+kapp deploy -a concourse  \
+  -f generated/$CLUSTER_NAME/concourse/helm-manifest-plus-vault.yaml \
+  -n $CONCOURSE_NAMESPACE \
+  -y
+ 

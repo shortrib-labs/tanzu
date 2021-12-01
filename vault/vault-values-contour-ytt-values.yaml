@@ -1,0 +1,9 @@
+#@data/values
+---
+project: shortrib
+unseal_key:
+  ring:
+
+gcp_credentials_secret: gcloud
+
+

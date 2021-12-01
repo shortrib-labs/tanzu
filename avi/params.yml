@@ -1,0 +1,14 @@
+ip: 10.18.1.231
+host: avi.lab.shortrib.net
+mask: 24
+
+vsphere:
+  datacenter: garage
+  pool: tanzu
+  datastore: vsanDatastore
+  network: management-pg
+
+image: /Users/cda/share/images/controller-21.1.2-9124.ova
+ssh:
+  public: /Users/cda/.ssh/id_homelab.pub
+

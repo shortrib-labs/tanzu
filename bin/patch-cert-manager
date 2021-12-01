@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+OVERLAY_SECRET="cert-manager-dns-overlay"
+kubectl create secret generic -n tanzu-kapp --from-file overlay.yaml=${PROJECT_DIR}/overlay/cert-manager-dns/overlay.yaml --dry-run=client -o yaml "${OVERLAY_SECRET}" | kubectl apply -f -
+
+kubectl annotate -n tanzu-kapp packageinstall cert-manager ext.packaging.carvel.dev/ytt-paths-from-secret-name.0=${OVERLAY_SECRET} --overwrite

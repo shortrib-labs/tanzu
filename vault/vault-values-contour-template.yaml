@@ -1,0 +1,62 @@
+#@ load("@ytt:data", "data")
+---
+injector:
+  enabled: false 
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: contour
+    hosts:
+    - host: #@ data.values.vault.fqdn
+      paths: []
+    tls: 
+    - secretName: vault-cert
+      hosts:
+      - #@ data.values.vault.fqdn
+    annotations: |
+      cert-manager.io/cluster-issuer: "letsencrypt-contour-cluster-issuer"
+      ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+  authDelegator:
+    enabled: false
+
+  dataStorage:
+    enabled: true
+
+  auditStorage:
+    enabled: true
+
+  extraVolumes:
+  - type: secret
+    name: #@ data.values.vault.secret
+    
+  # Run Vault in "standalone" mode. This is the default mode that will deploy if
+  # no arguments are given to helm. This requires a PVC for data storage to use
+  # the "file" backend.  This mode is not highly available and should not be scaled
+  # past a single replica.
+
+  #@yaml/text-templated-strings
+  standalone:
+    config: |
+      ui = true
+
+      listener "tcp" {
+      tls_disable = 1
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+      storage "file" {
+        path = "/vault/data"
+      }
+
+      # Example configuration for using auto-unseal, using Google Cloud KMS. The
+      # GKMS keys must already exist, and the cluster must have a service account
+      # that is authorized to access GCP KMS.
+      seal "gcpckms" {
+        credentials = "/vault/userconfig/(@= data.values.vault.secret @)/credentials.json"
+        project     = "(@= data.values.vault.project @)"
+        region      = "global"
+        key_ring    = "(@= data.values.vault.key_ring @)"
+        crypto_key  = "(@= data.values.vault.key @)"
+      }
