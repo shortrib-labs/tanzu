@@ -16,6 +16,7 @@ path "concourse/*" {
     policy = "read"
 }
 POLICY
+)
 
 if ! vault read --format json auth/approle/role/concourse/role-id | jq -r .data.role_id ; then
   vault write auth/approle/role/concourse policies=concourse period=1h
