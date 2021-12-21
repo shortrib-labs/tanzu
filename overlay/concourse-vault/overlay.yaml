@@ -17,4 +17,10 @@ spec:
         - name: CONCOURSE_VAULT_AUTH_BACKEND_MAX_TTL
           value: "1h"
         - name: CONCOURSE_VAULT_AUTH_PARAM 
-          value: #@ "{}:{}".format(data.values.concourse["vault-role-id"],data.values.concourse["vault-secret-id"])
+          value: #@ "role_id:{},secret_id:{}".format(data.values.concourse["vault-role-id"],data.values.concourse["vault-secret-id"])
+        #@overlay/match by="name"
+        #@overlay/remove
+        - name: CONCOURSE_KUBERNETES_IN_CLUSTER
+        #@overlay/match by="name"
+        #@overlay/remove
+        - name: CONCOURSE_KUBERNETES_NAMESPACE_PREFIX
