@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+GROUP=${1}
+
+vault write identity/group name="${GROUP}" type="external" policies="${GROUP}" metadata=responsibility="Manage platform secrets"
+ 
+GROUP_ID=$(vault read -field=id identity/group/name/${GROUP})
+OIDC_AUTH_ACCESSOR=$(vault auth list -format=json  | jq -r '."oidc/".accessor')
+
+vault write identity/group-alias name="${GROUP}" \
+  mount_accessor="$OIDC_AUTH_ACCESSOR" \
+  canonical_id="$GROUP_ID"
+
+vault policy write ${GROUP} ${PROJECT_DIR}/vault/policy/${GROUP}.hcl
+
+vault write auth/oidc/role/${GROUP} \
+  bound_audiences="$(yq e .okta.vault-app-client-id ${PARAMS_YAML})" \
+  allowed_redirect_uris="https://vault.shortrib.dev/ui/vault/auth/oidc/oidc/callback" \
+  allowed_redirect_uris="http://localhost:8250/oidc/callback" \
+  oidc_scopes=groups,profile,openid,email \
+  user_claim="sub" \
+  policies="${GROUP}" \
+  groups_claim="groups" 

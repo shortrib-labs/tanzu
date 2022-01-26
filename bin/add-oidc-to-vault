@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -x
+
+vault auth enable oidc
+vault write auth/oidc/config \
+  oidc_discovery_url="https://$(yq e .okta.auth-server-fqdn ${PARAMS_YAML})" \
+  oidc_client_id="$(yq e .okta.vault-app-client-id ${PARAMS_YAML})" \
+  oidc_client_secret="$(yq e .okta.vault-app-client-secret ${PARAMS_YAML})" \
+  default_role="reader"
+
+vault policy write reader <(
+for backend in $(vault secrets list --format json | jq 'with_entries(select(.value.type == "kv" )) | keys | .[] | .[:-1]'); do
+  cat <<POLICY
+  path "${backend}/*" {
+      policy = "read"
+  }
+POLICY
+done
+)
+
+vault write auth/oidc/role/reader \
+  bound_audiences="$(yq e .okta.vault-app-client-id ${PARAMS_YAML})" \
+  allowed_redirect_uris="https://$(yq e .vault.fqdn ${PARAMS_YAML})/ui/vault/auth/oidc/oidc/callback" \
+  allowed_redirect_uris="http://localhost:8250/oidc/callback" \
+  user_claim="sub" \
+  policies="reader"
+
