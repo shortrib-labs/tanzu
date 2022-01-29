@@ -5,7 +5,7 @@ if [ ! $# -eq 1 ]; then
   exit 1
 fi
 
-echo "Beginning Velero install..."
+echo "Beginning Velero install"
 
 CLUSTER_NAME=$1
 kubectl config use-context $CLUSTER_NAME-admin@$CLUSTER_NAME
@@ -18,17 +18,18 @@ if [ "$IAAS" = "vsphere" ];
 then
   velero install \
       --provider gcp \
-      --plugins velero/velero-plugin-for-gcp:v1.3.0,vsphereveleroplugin/velero-plugin-for-vsphere:1.1.0 \
+      --plugins velero/velero-plugin-for-gcp:v1.3.0 \
       --bucket $VELERO_BUCKET \
-      --backup-location-config region=$VELERO_REGION \
-      --snapshot-location-config region=$VELERO_REGION \
-      --secret-file ${SECRETS_DIR}/credentials-velero.json
-  velero snapshot-location create vsl-vsphere --provider velero.io/vsphere
+      --prefix ${CLUSTER_NAME} \
+      --secret-file ${SECRETS_DIR}/credentials-velero.json \
+      --use-volume-snapshots=false \
+      --use-restic
 else
   velero install \
       --provider aws \
       --plugins velero/velero-plugin-for-aws:v1.1.0 \
       --bucket $VELERO_BUCKET \
+      --prefix ${CLUSTER_NAME} \
       --backup-location-config region=$VELERO_REGION \
       --snapshot-location-config region=$VELERO_REGION \
       --secret-file keys/credentials-velero
@@ -44,8 +45,9 @@ done
 if [ "$IAAS" = "vsphere" ];
 then
   velero schedule create daily-$CLUSTER_NAME-cluster-backup \
-    --schedule "0 7 * * *" \
-    --volume-snapshot-locations vsl-vsphere
+    --schedule "0 7 * * *"
+  velero schedule create --default-volumes-to-restic weekly-$CLUSTER_NAME-cluster-backup \
+    --schedule "20 10 * * 6"
 else
   velero schedule create daily-$CLUSTER_NAME-cluster-backup \
     --schedule "0 7 * * *" 
