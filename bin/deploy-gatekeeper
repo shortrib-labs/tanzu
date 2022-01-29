@@ -1,0 +1,18 @@
+#!/bin/bash -e
+
+if [ ! $# -eq 1 ]; then
+  echo "Must supply cluster_name as args"
+  exit 1
+fi
+
+CLUSTER_NAME=$1
+
+kubectl config use-context $CLUSTER_NAME-admin@$CLUSTER_NAME
+
+VERSION=$(tanzu package available list gatekeeper.community.tanzu.vmware.com --namespace tanzu-kapp -oyaml | yq eval ".[0].version" -)
+
+tanzu package install gatekeeper \
+  --package-name gatekeeper.community.tanzu.vmware.com \
+  --version $VERSION \
+  --namespace tanzu-kapp \
+  --poll-timeout 10m0s
