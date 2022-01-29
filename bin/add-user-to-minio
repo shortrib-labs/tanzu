@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+MINIO=${1}
+USER=${2}
+
+mc admin policy add ${MINIO} ${USER} ${PROJECT_DIR}/minio/${USER}.json
+mc admin user add ${MINIO} ${USER} $(petname -w 5)
+mc admin policy set ${MINIO} ${USER} user=${USER}
