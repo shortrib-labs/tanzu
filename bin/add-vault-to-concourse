@@ -18,7 +18,8 @@ path "concourse/*" {
 POLICY
 )
 
-if ! vault read --format json auth/approle/role/concourse/role-id | jq -r .data.role_id ; then
+role_id=$(vault read --format json auth/approle/role/concourse/role-id | jq -r .data.role_id)
+if [[ -z ${role_id} ]] ; then
   vault write auth/approle/role/concourse policies=concourse period=1h
 fi
 

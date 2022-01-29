@@ -8,7 +8,7 @@ vsphere:
   datastore: vsanDatastore
   network: management-pg
 
-image: /Users/cda/share/images/controller-21.1.2-9124.ova
+image: /home/crdant/share/images/controller-21.1.3-9051.ova 
 ssh:
-  public: /Users/cda/.ssh/id_homelab.pub
+  public: /home/crdant/.ssh/id_homelab.pub
 
