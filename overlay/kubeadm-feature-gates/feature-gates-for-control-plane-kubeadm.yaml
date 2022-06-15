@@ -1,0 +1,25 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:overlay", "overlay")
+#@ load("@ytt:yaml", "yaml")
+
+#@ def feature_gates():
+#@   gates = {} 
+#@   if data.values.KUBEADM_FEATURE_GATES:
+#@     for gate in data.values.KUBEADM_FEATURE_GATES:
+#@       gates.update({ gate: True})
+#@     end
+#@   end
+#@   return gates
+#@ end
+
+#@overlay/match by=overlay.subset({"kind":"KubeadmControlPlane"}),expects="1+"
+#@overlay/match-child-defaults missing_ok=True
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1 
+kind: KubeadmControlPlane
+metadata:
+  name: #@ "{}-control-plane".format(data.values.CLUSTER_NAME)
+spec:
+  kubeadmConfigSpec:
+     clusterConfiguration:
+       featureGates: #@ feature_gates()
