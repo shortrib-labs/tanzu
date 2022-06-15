@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+cp ${PROJECT_DIR}/overlay/kubeadm-feature-gates/*.yaml ${HOME}/.config/tanzu/tkg/providers/ytt
+
+if ! grep "KUBEADM_FEATURE_GATES" ${HOME}/.config/tanzu/tkg/providers/config_default.yaml 2>&1 >/dev/null ; then
+  echo >> ${HOME}/.config/tanzu/tkg/providers/config_default.yaml 
+  echo 'KUBEADM_FEATURE_GATES: ""' >> ${HOME}/.config/tanzu/tkg/providers/config_default.yaml 
+fi
+
+if ! grep "KUBEADM_FEATURE_GATES" ~/.config/tanzu/tkg/providers/config_default.yaml 2>&1 >/dev/null ; then
+  sed -i -e 's/}/"KUBEADM_FEATURE_GATES": ["vsphere", "aws", "azure", "docker"]\n}/' ${HOME}/.config/tanzu/tkg/providers/ytt/lib/config_variable_association.star 
+fi
