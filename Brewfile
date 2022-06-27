@@ -1,0 +1,16 @@
+tap "hashicorp/tap"
+tap "vmware-tanzu/pinniped"
+tap "vmware-tanzu/tanzu"
+tap "vmware-tanzu/carvel"
+
+brew "direnv"
+brew "hashicorp/tap/vault"
+brew "helm"
+brew "kubernetes-cli"
+brew "minio-mc"
+brew "step"
+brew "vmware-tanzu/carvel/imgpkg"
+brew "vmware-tanzu/carvel/kapp"
+brew "vmware-tanzu/carvel/ytt"
+brew "velero"
+
